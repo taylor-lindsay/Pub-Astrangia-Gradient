@@ -493,7 +493,7 @@ vif(glm_sym_best) # test for multicolinearity
 ap_raw <- read.csv('AP_Sym_Apriori.csv')
 
 # boxplot
-a_priori_plot <- ggplot(ap_raw, aes(x=Morph, y=Cells.cm2, color=Morph)) +
+a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells.cm2, color=ecotype)) +
   # DATA 
   geom_boxplot() +
   # AESTHETICS 
