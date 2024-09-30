@@ -4,9 +4,10 @@ This repository contains the raw data and analysis for Lindsay et al. in review.
 
 ### Files 
 
-- TL_Quad_raw_data.csv - raw data collected from the field. See metadata below. 
-- TL_Quad_raw_data.R - data processing, modeling, and graphical analysis 
-- Figures - Contains published figures 
+- TL_Quad_raw_data.csv: raw data collected from the field. See metadata below. 
+- TL_Quad_raw_data.R: data processing, modeling, and graphical analysis 
+	- dfd
+- Figures: Contains published figures 
 
 ### metadata (from Raw data) 
 

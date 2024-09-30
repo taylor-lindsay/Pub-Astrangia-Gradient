@@ -20,12 +20,12 @@ library('grid')       #arranging plots
 library(ggpmisc)
 
 rm(list=ls())
-setwd("/Users/tayrlindsay/Desktop/TL_QUAD_analysis/")
+setwd("/Users/tayrlindsay/Desktop/GITHUB/Pub-Astrangia-Gradient/")
 
 # Data prep  ---------------------------------------------------------
 
 # read and edit data 
-data <- read.csv('TL_QUAD_raw_data.csv')  %>%
+data <- read.csv('TL_Quad_raw_data.csv')  %>%
   dplyr::select(algae, corrected_depth_m, mean_sym, mean_apo, light) %>%
   mutate(Sym = mean_sym*4) %>%
   mutate(Apo = mean_apo*4) %>%
@@ -485,4 +485,30 @@ glm_sym_r <- resid(glm_sym_best) # pull residuals of best model
 ggqqplot(glm_sym_r) # plot residuals in q-q plot 
 vif(glm_sym_best) # test for multicolinearity 
 
+# Supplemental ------------------------------------------------------------
+
+### A priori symbiont density 
+
+#AP_Apriori
+ap_raw <- read.csv('AP_Sym_Apriori.csv')
+
+# boxplot
+a_priori_plot <- ggplot(ap_raw, aes(x=Morph, y=Cells.cm2, color=Morph)) +
+  # DATA 
+  geom_boxplot() +
+  # AESTHETICS 
+  theme_bw()+
+  labs(x= "Ecotype", y= expression(paste("Symbiont cells per ", cm^{-2})))+
+  scale_color_manual(
+    values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
+    labels = c("Aposymbiotic", "Symbiotic")) + 
+  theme(text = element_text(size=25),
+        legend.position = "none")
+a_priori_plot        
+
+# t-test 
+a_priori_plot2 = a_priori_plot + stat_compare_means(method = "t.test", size = 5)
+a_priori_plot2
+
+ggsave("TL_Quad_S1_apriori.jpg", plot = a_priori_plot2, path = 'Figures', height = 8, width = 5)
 
