@@ -1,4 +1,5 @@
-# TL QUAD Data analysis 
+# Astrangia Poculata Depth Gradient Sampling 
+# Lindsay, Dunster & Prada in review. 
 
 # Written by T. Lindsay 
 # 9.25.2024
@@ -150,7 +151,7 @@ light_modeled <- ggplot(data1) +
   theme(text = element_text(size=15)) 
 light_modeled
 
-ggsave("TLAP_Quad_fig2_light.jpg", plot = light_modeled, path = 'Figures', width =4, height = 6)
+ggsave("TLAP_Quad_fig2_light.pdf", plot = light_modeled, path = 'Figures', width =4, height = 6)
 
 #### Calculating R2 value 
 
@@ -180,7 +181,7 @@ total_line <- ggplot(summary_merged_all, aes(x=breaks,y=av)) +
   theme_bw() + 
   theme(text = element_text( size=15),  legend.position = "bottom") 
 total_line
-#ggsave("TLAP_Quad_lines.jpg", plot = line_by_ecotype , path = 'Figures', width =10, height = 5)
+#ggsave("TLAP_Quad_lines.pdf", plot = line_by_ecotype , path = 'Figures', width =10, height = 5)
 
 # abundance x ecotype 
 line_by_ecotype <- ggplot(summary_merged, aes(x=breaks,y=av, color=colony_type)) + 
@@ -200,7 +201,7 @@ line_by_ecotype <- ggplot(summary_merged, aes(x=breaks,y=av, color=colony_type))
   theme(text = element_text(size=15),  legend.position = c(0.8, 0.8)) 
 line_by_ecotype 
 
-ggsave("TLAP_Quad_fig3_ecotype.jpg", plot = line_by_ecotype , path = 'Figures', width =10, height = 5)
+ggsave("TLAP_Quad_fig3_ecotype.pdf", plot = line_by_ecotype , path = 'Figures', width =10, height = 5)
 
 # Figure 4. Percent Cover  ----------------------------------------------------------------
 
@@ -222,7 +223,7 @@ percent_cover <- ggplot(percent_cover_summary, aes(x=breaks,y=av, fill=cover_typ
         legend.position = c(0.8, 0.8)) 
 percent_cover
 
-ggsave("TLAP_Quad_fig4_percent_cover.jpg", plot = percent_cover, path = 'Figures', width =10, height = 5)
+ggsave("TLAP_Quad_fig4_percent_cover.pdf", plot = percent_cover, path = 'Figures', width =10, height = 5)
 
 
 # Figure 5. Linear Regressions ----------------------------------------------------------------
@@ -396,7 +397,7 @@ tp_arrange <- grid.arrange(plot_shallow_depth, plot_middle_depth, plot_deep_dept
 
 tp_arrange
 
-ggsave("TLAP_Quad_fig5_linear_models.jpg", plot = tp_arrange, path = 'Figures', width =20, height = 15)
+ggsave("TLAP_Quad_fig5_linear_models.pdf", plot = tp_arrange, path = 'Figures', width =20, height = 15)
 
 # normality testing -------------------------------------------------------
 
@@ -510,5 +511,5 @@ a_priori_plot
 a_priori_plot2 = a_priori_plot + stat_compare_means(method = "t.test", size = 5)
 a_priori_plot2
 
-ggsave("TL_Quad_S1_apriori.jpg", plot = a_priori_plot2, path = 'Figures', height = 8, width = 5)
+ggsave("TLAP_Quad_S1_apriori.pdf", plot = a_priori_plot2, path = 'Figures', height = 8, width = 5)
 
