@@ -17,8 +17,12 @@ library(MASS) # for stepAIC()
 library(ggpubr)# for R2 and pvaules 
 library(ggplot2)
 library('gridExtra')  #to arrange plots 
+library(cowplot)      # arranging plots
 library('grid')       #arranging plots 
 library(ggpmisc)
+
+library(ggmap) # mapping 
+library(ggspatial) # for N arrow & mapping 
 
 rm(list=ls())
 setwd("/Users/tayrlindsay/Desktop/GITHUB/Pub-Astrangia-Gradient/")
@@ -28,9 +32,9 @@ setwd("/Users/tayrlindsay/Desktop/GITHUB/Pub-Astrangia-Gradient/")
 # read and edit data 
 data <- read.csv('TL_Quad_raw_data.csv')  %>%
   dplyr::select(algae, corrected_depth_m, mean_sym, mean_apo, light) %>%
-  mutate(Sym = mean_sym*4) %>%
-  mutate(Apo = mean_apo*4) %>%
-  mutate(all_colonies = Sym + Apo) %>%
+  mutate(Sym = mean_sym*4) %>% # to get from 0.25m to 1m
+  mutate(Apo = mean_apo*4) %>% # to get from 0.25m to 1m
+  mutate(all_colonies = Sym + Apo) %>% # calculate all colonies 
   mutate(bins = cut(corrected_depth_m, 
                     breaks = c(0,2,4,6,8,10,12,14,16,18,20,22,24))) 
 
@@ -45,12 +49,108 @@ data1 <- data %>%
 
 ### CALCULATE PERCENT COVER 
 # Percent cover based on sizes 
-# colonies were 0.053629137 m^2 
+# colonies were 5.17 cm^2 
 data1 <- data1 %>%
-  mutate(percent_sym = mean_sym*0.0053629137*100) %>%
-  mutate(percent_apo = mean_apo*0.0053629137*100) %>%
+  mutate(percent_sym = mean_sym*0.00517*100) %>%
+  mutate(percent_apo = mean_apo*0.00517*100) %>%
   mutate(percent_AP = percent_apo + percent_sym)
 
+# Fig 1. A-priori sym density  --------------------------------------------
+
+#AP_Apriori
+ap_raw <- read.csv('AP_Sym_Apriori.csv')
+
+# boxplot
+a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells.cm2, color=ecotype, fill=ecotype)) +
+  # DATA 
+  geom_boxplot(alpha=0.6) +
+  geom_point(size=2) + 
+  # AESTHETICS 
+  theme_bw()+
+  labs(x= "Ecotype", y= expression(paste("Symbiont cells per ", cm^{-2})))+
+  scale_color_manual(
+    values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
+    labels = c("Aposymbiotic", "Symbiotic")) + 
+  scale_fill_manual(values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
+                    labels = c("Aposymbiotic", "Symbiotic")) + 
+  theme(text = element_text(size=25),
+        legend.position = "none", 
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm")) 
+ #stat_compare_means(method = "t.test", size = 5)
+a_priori_plot        
+
+# pivot longer 
+ap_raw_wider <- ap_raw %>% pivot_wider(names_from = field_color, values_from = Cells.cm2)
+
+# t-test
+t_test <- t.test(ap_raw_wider$WH, ap_raw_wider$BR, paired = FALSE)
+
+# extract stats 
+a_priori_stats <- data.frame(t = t_test$statistic,
+                             df = t_test$parameter, 
+                             p = t_test$p.value)
+
+# means 
+a_priori_means <- ap_raw %>%
+  group_by(field_color) %>%
+  summarise(mean = signif(mean(Cells.cm2),3), SD = signif(sd(Cells.cm2),3))
+
+# save graph 
+ggsave("TLAP_Quad_fig1_apriori.pdf", plot = a_priori_plot, path = 'Figures', height = 10, width = 7)
+
+# Fig 2. Site Map  --------------------------------------------------------------------
+
+#Input google key
+api_key <- ggmap::register_google(key="AIzaSyCCnby--k4d03DNhfdcpUvo8Hy4oNAvclw")
+
+#Create a polygon to represent study area 
+data_poly <- data.frame(
+  x = c(-71.35968441135724, -71.35943795366822, -71.35966559028258, -71.35991204897159),
+  y = c(41.47774897910367, 41.47767313187885, 41.47719923466554, 41.47727508189036)
+)
+
+#Set map parameters
+map <- ggmap(get_googlemap(center = c(lon=-71.35956382204118,lat=41.477132724439244), maptype = "satellite", zoom=17))  + 
+  geom_segment(aes(x = -71.362, xend = -71.360, y = 41.4747, yend = 41.4747), color = "white", linewidth = 1.5) +  # Scale bar
+  annotate("text", x = -71.361, y = 41.4748, label = "200 m", color = "white", size = 4) +
+  geom_polygon(data=data_poly, aes(x=x,y=y), fill = "yellow", color = "yellow", alpha = 0.5) +
+  labs(x = "Longitude", y = "Latitude") + # Renaming axes 
+  annotation_north_arrow(which_north = "true", height = unit(1,"cm"), width = unit(1,"cm"), 
+                         pad_x = unit(6, "cm"), pad_y = unit(0.2, "cm"),
+                         style = north_arrow_fancy_orienteering(text_col = 'white',
+                                                                line_col = 'white',
+                                                                fill = 'white'))
+map
+
+# Create the inset map for the northeast
+inset_map <- get_googlemap(center = c(lon= -70.71,lat=41.7354320893667),
+                           maptype = "satellite", zoom = 9)
+
+# indicate location of study site 
+site <- data.frame(lat=c(41.47822634827611), lon=c(-71.35966383812969))
+
+# Create a ggplot object for the inset
+inset_plot <- ggmap(inset_map)+ 
+  geom_point(data=site, aes(x=lon, y=lat), color="red", size=3, shape=17)
+
+# Save both plots as separate objects
+map_grob <- ggplotGrob(map)
+
+# Save combined plot to a file using a PDF device
+pdf(file = "Figures/TLAP_Quad_fig2_map.pdf", width = 6, height = 6) # Adjust dimensions as needed
+
+# Combine the plots
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(1, 1)))
+
+# Draw the main map
+grid.draw(map_grob)
+
+# Add the inset at specified coordinates
+print(inset_plot + theme_void(), vp = viewport(x = 0.8, y = 0.3, width = 0.35, height = 0.35)) # Adjust x, y, width, and height
+
+# Close the graphics device
+dev.off()
 
 # Model Light  ------------------------------------------------------------
 
@@ -80,6 +180,32 @@ data1 <- data1 %>%
   mutate(modeled_light = 
            -248.0086 + (10237.8397 - (-248.0086))*exp(-0.2673758*corrected_depth_m))
 
+simplified_function_flipped <- function(light) {
+  # Invert the formula: solve for depth
+  # -248.0086 + (10237.8397 - (-248.0086)) * exp(-0.2673758 * depth) = light
+  # Rearranging for depth:
+  # exp(-0.2673758 * depth) = (light + 248.0086) / (10237.8397 - (-248.0086))
+  # depth = -log((light + 248.0086) / (10237.8397 - (-248.0086))) / 0.2673758
+  
+  depth <- -log((light + 248.0086) / (10237.8397 + 248.0086)) / 0.2673758
+  return(depth)
+}
+
+#### Calculating R2 value 
+
+# calculate the residuals 
+residuals <- residuals(fit)
+plot(data$corrected_depth_m, residuals)
+
+# calculate sum of squares of residuals 
+RSS <- sum(residuals^2)
+# Calculate total sum of squares 
+TSS <- sum((data$light - mean(data$light))^2)
+
+# Calculate R-squared
+r_squared <- 1 - RSS / TSS
+r_squared
+
 # Calculate mean abundance  -----------------------------------------------
 
 ### MEAN ABUNDANCE OF APO AND SYM 
@@ -93,8 +219,15 @@ summary_merged <- data2 %>%
   group_by(bins,colony_type) %>% 
   summarise_at(vars(abundance), 
                list(av = ~mean(., na.rm = TRUE), 
-                    sd = ~sd(., na.rm = TRUE)
+                    sd = ~sd(., na.rm = TRUE),
+                    n = ~length(.)
                ))
+
+summary_bins <- data2 %>%
+  group_by(bins) %>%
+  summarise_at(vars(abundance),
+               list(n = ~length(.))) %>%
+  mutate(n= n/2)
 
 # create new df of numbers for break points 
 break_points <- c(0,0,2,2,4,4,6,6,8,8,10,10,12,12,14,14,16,16,18,18,20,20,22,22)
@@ -134,99 +267,122 @@ break_points3 <- c(0,0,0,2,2,2,4,4,4,6,6,6,8,8,8,10,10,10,12,12,12,14,14,14,16,1
 #add to summary df 
 percent_cover_summary$breaks = break_points3
 
-# Figure 2. Light curve  --------------------------------------------------
+# Fig 3. Light curve & Mean curves  --------------------------------------------------
 
 #### Create light figure 
 
 # PLOT Light x Depth 
 light_modeled <- ggplot(data1) +
   # DATA
-  geom_point(aes(x=corrected_depth_m,y=light), color = "black", alpha = 0.6, size=1, shape=1) + 
-  stat_function(fun = simplified_function, color = "orange") + 
+  geom_point(aes(x=light,y=corrected_depth_m), color = "black", alpha = 0.6, size=2, shape=1) + 
+  stat_function(fun = simplified_function_flipped, color = "orange") + 
   # AESTHETICS 
-  labs( y = expression(paste("Light Intensity (lum ", m^{-2}, ")")), x = "Depth (m below MLLW)") +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 25000)) + 
-  scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) + 
+  labs( x = expression(paste("Light Intensity (lum ", m^{-2}, ")")), y = "Depth (m below MLLW)") +
+  #scale_x_continuous(expand = c(0, 0), limits = c(0, 25000)) + 
+  scale_y_reverse(expand = c(0, 0), limits = c(23,-1)) + 
+  scale_x_continuous(position = "top") + 
   theme_bw() +
-  theme(text = element_text(size=15)) 
-light_modeled
+  theme(text = element_text(size=15), plot.margin=unit(c(0.2,0.5,0.2,0.2),"cm")) 
 
-ggsave("TLAP_Quad_fig2_light.pdf", plot = light_modeled, path = 'Figures', width =4, height = 6)
+#light_modeled
+#ggsave("TLAP_Quad_fig2_light.pdf", plot = light_modeled, path = 'Figures', width =4, height = 6)
 
-#### Calculating R2 value 
-
-# calculate the residuals 
-residuals <- residuals(fit)
-plot(data$corrected_depth_m, residuals)
-
-# calculate sum of squares of residuals 
-RSS <- sum(residuals^2)
-# Calculate total sum of squares 
-TSS <- sum((data$light - mean(data$light))^2)
-
-# Calculate R-squared
-r_squared <- 1 - RSS / TSS
-r_squared
-
-# Figure 3. Abundance  ------------------------------------------------------------------
-
-# total abundance 
-total_line <- ggplot(summary_merged_all, aes(x=breaks,y=av)) + 
-  #DATA
-  geom_point(size=3) + 
-  geom_line(linetype="dashed") + 
-  geom_errorbar(aes(ymin = av - sd, ymax = av + sd), width = 0.1) +
-  #AESTHETICS
-  labs(x = "Depth (m)", y="Mean colony density" ~(m^2)) + 
-  theme_bw() + 
-  theme(text = element_text( size=15),  legend.position = "bottom") 
-total_line
-#ggsave("TLAP_Quad_lines.pdf", plot = line_by_ecotype , path = 'Figures', width =10, height = 5)
+### Create Abundance curves
 
 # abundance x ecotype 
-line_by_ecotype <- ggplot(summary_merged, aes(x=breaks,y=av, color=colony_type)) + 
+line_by_ecotype <- ggplot(summary_merged, aes(x=av, y=breaks, color=colony_type)) + 
   #DATA
+  geom_hline(yintercept = 10.5, linetype="dashed", linewidth=0.8) + 
+  geom_hline(yintercept = 13, linetype="dashed", linewidth=0.8) + 
+  geom_line(linetype="dashed", linewidth=1, orientation = "y") + 
   geom_point(size=5) + 
-  geom_line(linetype="dashed", size=2) + 
-  geom_vline(xintercept = 10.5, linetype="dashed", linewidth=0.8) + 
-  geom_vline(xintercept = 13, linetype="dashed", linewidth=0.8) + 
-  geom_errorbar(aes(ymin = av - sd, ymax = av + sd, color=colony_type), width = 0.1) +
+  geom_errorbarh(aes(xmin = av - sd, xmax = av + sd, color = colony_type), height = 0.3) +  # Horizontal error bars
   #AESTHETICS
   scale_color_manual(
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels=c('Aposymbiotic', 'Symbiotic'), 
     name = "Ecotype") + 
-  labs(x = "Depth (m)", y="Mean colony density" ~(m^2)) + 
+  labs(y = "", x="Mean colony density" ~(m^2)) + 
+  scale_y_reverse(expand = c(0, 0), limits = c(23,-1)) + 
+  #scale_x_continuous(expand = c(0,5)) + 
+  scale_x_continuous(position = "top") + 
   theme_bw() + 
-  theme(text = element_text(size=15),  legend.position = c(0.8, 0.8)) 
-line_by_ecotype 
+  theme(text = element_text(size=15),  legend.position = c(0.8, 0.8),
+        legend.background = element_rect(color = "black", fill = "white"))  # Add black border and white fill
 
-ggsave("TLAP_Quad_fig3_ecotype.pdf", plot = line_by_ecotype , path = 'Figures', width =10, height = 5)
+#line_by_ecotype 
+#ggsave("TLAP_Quad_fig3_ecotype.pdf", plot = line_by_ecotype , path = 'Figures', width =8, height = 10)
 
-# Figure 4. Percent Cover  ----------------------------------------------------------------
+### Join light & abundance curves 
 
-percent_cover <- ggplot(percent_cover_summary, aes(x=breaks,y=av, fill=cover_type)) + 
+#combine ecotype and treatment 
+fig3_arrange <- plot_grid(light_modeled, line_by_ecotype, 
+                            ncol = 2, align = "v",  rel_widths = c(0.4, 0.6), 
+                            labels = c("A", "B"),  label_size = 20, label_x = 0, label_y = 1)
+fig3_arrange
+ggsave("TLAP_Quad_fig3_light_abundance.pdf", plot = fig3_arrange, path = 'Figures', width = 12, height = 8)
+
+# Fig 4. Percent Cover  ----------------------------------------------------------------
+
+# calculate percent cover in each of the three zones 
+percent_cover_zones <- data1 %>%
+   mutate(zone = case_when(
+    corrected_depth_m >= 0 & corrected_depth_m <= 10.5 ~ "macro",
+    corrected_depth_m > 10.5 & corrected_depth_m <= 13 ~ "coral",
+    corrected_depth_m > 13 & corrected_depth_m <= 24 ~ "deep",
+    TRUE ~ NA_character_  # Optional: handle values outside these ranges
+  )) %>%
+  group_by(zone) %>%
+  summarise(mean_apo = mean(percent_apo),
+            sd_apo = sd(percent_apo),
+            mean_sym = mean(percent_sym),
+            sd_sym = sd(percent_sym),
+            mean_alg = mean(percent_alg),
+            sd_alg = sd(percent_alg))
+            
+  
+
+# graph percent cover 
+percent_cover <- ggplot(percent_cover_summary, aes(x=av, y=breaks, fill=cover_type)) + 
   #DATA
-  geom_area(color="black") + 
-  geom_vline(xintercept = 10.5, linetype="dashed", linewidth=0.8) + 
-  geom_vline(xintercept = 13, linetype="dashed", linewidth=0.8) + 
+  geom_area(color="black", orientation = "y") + 
+  geom_hline(yintercept = 10.5, linetype="dashed", linewidth=0.8) + 
+  geom_hline(yintercept = 13, linetype="dashed", linewidth=0.8) + 
   #geom_line(linetype="dashed") + 
   #geom_errorbar(aes(ymin = av - sd, ymax = av + sd), width = 0.1) +
   #AESTHETICS
+  scale_y_reverse(expand = c(0, 0), limits = c(23,-1)) + 
+  scale_x_continuous(position = "top") + 
   scale_fill_manual(
     values = c("percent_apo" = "#bf9e72", "percent_sym" = "#7F1734", algae="#1B6B22"),
     labels = c("Macroalgae","Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  labs(x = "Depth (m)", y="Benthic cover (%)") + 
+  labs(y = "Depth (m below MLLW)", x="Benthic cover (%)") + 
   theme_bw() + 
   theme(text = element_text( size=15),  
-        legend.position = c(0.8, 0.8)) 
+        legend.position = c(0.7, 0.2), legend.background = element_rect(color = "black", fill = "white")) 
 percent_cover
 
-ggsave("TLAP_Quad_fig4_percent_cover.pdf", plot = percent_cover, path = 'Figures', width =10, height = 5)
+# Load images
+img_2m <- rasterGrob(as.raster(jpeg::readJPEG("Photos/2m.JPG")), interpolate = TRUE)
+img_8m <- rasterGrob(as.raster(jpeg::readJPEG("Photos/8m.JPG")), interpolate = TRUE)
+img_11m <- rasterGrob(as.raster(jpeg::readJPEG("Photos/11m.JPG")), interpolate = TRUE)
+img_18m <- rasterGrob(as.raster(jpeg::readJPEG("Photos/18m.JPG")), interpolate = TRUE)
 
+# combine graph and images
 
-# Figure 5. Linear Regressions ----------------------------------------------------------------
+pics <- plot_grid(img_2m,img_8m, img_11m, img_18m, 
+                          ncol = 1, align = "v",  
+                          labels = c("B", "C", "D", "E"),  label_size = 20, label_x = 0, label_y = 0.98)
+
+pics
+
+fig4_arrange <- plot_grid(percent_cover, pics,  rel_widths = c(0.6, 0.4), 
+                          ncol = 2, labels = c("A", ""), label_size = 20, label_x = 0, label_y = 1)
+
+ggsave("TLAP_Quad_fig4_percent_cover.pdf", plot = fig4_arrange, path = 'Figures', width =8, height =8)
+
+# Fig 5. Linear Regressions ----------------------------------------------------------------
 
 # set formula to be a line 
 formula <- y ~ x   
@@ -280,11 +436,11 @@ plot_shallow_depth <- ggplot(data_s, aes(x=corrected_depth_m, y = abundance, col
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  ggtitle("Macroalgae Zone") + 
-  labs(x = "Depth (m)", y="") + 
+  labs(x = NULL, y=NULL) + 
   theme(text = element_text(size=25),
         legend.position = "none", 
-        plot.title = element_text(hjust = 0.5, size = 25, face = "bold"))
+        plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
+        plot.margin=unit(c(0.5,0.5,1,0),"cm"))
 
 # CORAL ZONE x DEPTH  
 plot_middle_depth <- ggplot(data_m, aes(x=corrected_depth_m, y = abundance, color = colony_type)) + 
@@ -297,11 +453,12 @@ plot_middle_depth <- ggplot(data_m, aes(x=corrected_depth_m, y = abundance, colo
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  ggtitle("Coral Zone") + 
-  labs(x = "Depth (m)", y="")+  #title = "Middle Zone (10.5-13m)"
+  #ggtitle("Coral Zone") + 
+  labs(x = NULL, y=NULL)+  #title = "Middle Zone (10.5-13m)"
   theme(text = element_text(size=25),
         legend.position = "none", 
-        plot.title = element_text(hjust = 0.5, size = 25, face = "bold"))
+        plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
+        plot.margin=unit(c(0,0.5,0,0),"cm"))
 
 # DEEP ZONE x DEPTH  
 plot_deep_depth <- ggplot(data_d, aes(x=corrected_depth_m, y = abundance, color = colony_type)) + 
@@ -314,15 +471,12 @@ plot_deep_depth <- ggplot(data_d, aes(x=corrected_depth_m, y = abundance, color 
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  ggtitle("Deep Zone") + 
-  labs(x = "Depth (m)", y="") + #title = "Deep Zone (13-24m)", 
+  #ggtitle("Deep Zone") + 
+  labs(x = "Depth (m)", y=NULL) + #title = "Deep Zone (13-24m)", 
   theme(text = element_text(size=25),
         legend.position = "none", 
-        plot.title = element_text(hjust = 0.5, size = 25, face = "bold"))
-
-plot_shallow_depth
-plot_middle_depth
-plot_deep_depth
+       # plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
+        plot.margin=unit(c(0.5,0.5,0.5,0),"cm"))
 
 # MACROALGAE ZONE x LIGHT
 plot_shallow_light <- ggplot(data_s, aes(x=modeled_light, y = abundance, color = colony_type)) + 
@@ -335,9 +489,10 @@ plot_shallow_light <- ggplot(data_s, aes(x=modeled_light, y = abundance, color =
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  labs( x = expression(paste("Light Intensity (lum ", m^{-2}, ")")), y="") + #Mean Abundance" ~(m^2))
+  labs( x = NULL, y= NULL) + #Mean Abundance" ~(m^2))
   theme(text = element_text(size=25),
-        legend.position = "none")
+        legend.position = "none",
+        plot.margin=unit(c(0.5,0.5,1,0),"cm"))
 
 # CORAL ZONE x LIGHT
 plot_middle_light <-ggplot(data_m, aes(x=modeled_light, y = abundance, color = colony_type)) + 
@@ -350,9 +505,10 @@ plot_middle_light <-ggplot(data_m, aes(x=modeled_light, y = abundance, color = c
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  labs( x = expression(paste("Light Intensity (lum ", m^{-2}, ")")), y="") +
+  labs( x = NULL, y=NULL) +
   theme(text = element_text(size=25),
-        legend.position = "none")
+        legend.position = "none",
+        plot.margin=unit(c(0,0.5,0,0),"cm"))
 
 # DEEP ZONE x LIGHT  
 plot_deep_light <-ggplot(data_d, aes(x=modeled_light, y = abundance, color = colony_type)) + 
@@ -365,13 +521,10 @@ plot_deep_light <-ggplot(data_d, aes(x=modeled_light, y = abundance, color = col
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  labs(x = expression(paste("Light Intensity (lum ", m^{-2}, ")")), y="") +
+  labs(x = expression(paste("Light Intensity (lum ", m^{-2}, ")")), y=NULL) +
   theme(text = element_text(size=25),
-        legend.position = "none")
-
-plot_shallow_light
-plot_middle_light
-plot_deep_light
+        legend.position = "none",
+        plot.margin=unit(c(0.5,0.5,0,0),"cm"))
 
 # MACROALGAE ZONE x MACROAGALE
 plot_shallow_algae <-ggplot(data_s, aes(x=algae, y = abundance, color = colony_type)) + 
@@ -384,22 +537,29 @@ plot_shallow_algae <-ggplot(data_s, aes(x=algae, y = abundance, color = colony_t
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
-  labs(x ="Macroalgae Cover (%)", y="")+  # Mean Abundance" ~(m^2))
+  labs(x ="Macroalgae Cover (%)", y=NULL)+  # Mean Abundance" ~(m^2))
   theme(text = element_text(size=25), 
-        legend.position = "none")
+        legend.position = "none",
+        plot.margin=unit(c(0.5,0.5,0,0),"cm"))
 
 plot_shallow_algae
 
 # Arrange plots into one 
 #top <- textGrob("Macroalgae Zone           Coral Zone           Deep Zone",gp = gpar(fontsize = 25))
-yleft <- textGrob(expression(bold("Mean Abundance" ~(colonies/m^2))), rot = 90, gp = gpar(fontsize = 25))
-tp_arrange <- grid.arrange(plot_shallow_depth, plot_middle_depth, plot_deep_depth, plot_shallow_light, plot_middle_light, plot_deep_light, plot_shallow_algae,led, nrow=3,  left=yleft)
-
+yleft <- textGrob(expression("Mean Abundance" ~(colonies/m^2)), rot = 90, gp = gpar(fontsize = 25))
+ylefter <- textGrob(expression(bold("    Deep Zone                       Coral Zone                 Macroalgae Zone")), rot = 90, gp = gpar(fontsize = 30))
+xtop <- textGrob(expression(bold("         Depth                                            Light                                         Macroalgae")),  gp = gpar(fontsize = 30))
+tp_arrange <- grid.arrange(
+  plot_shallow_depth, plot_shallow_light, plot_shallow_algae,
+  plot_middle_depth, plot_middle_light, led,
+  plot_deep_depth, plot_deep_light, 
+  nrow=3,  left=yleft)
+tp_arrange <- grid.arrange(tp_arrange, left=ylefter, top = xtop)
 tp_arrange
 
 ggsave("TLAP_Quad_fig5_linear_models.pdf", plot = tp_arrange, path = 'Figures', width =20, height = 15)
 
-# normality testing -------------------------------------------------------
+# Normality Testing -------------------------------------------------------
 
 ##### SYM 
 
@@ -485,31 +645,4 @@ summary(glm_sym_best) # summary of best model
 glm_sym_r <- resid(glm_sym_best) # pull residuals of best model 
 ggqqplot(glm_sym_r) # plot residuals in q-q plot 
 vif(glm_sym_best) # test for multicolinearity 
-
-# Supplemental ------------------------------------------------------------
-
-### A priori symbiont density 
-
-#AP_Apriori
-ap_raw <- read.csv('AP_Sym_Apriori.csv')
-
-# boxplot
-a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells.cm2, color=ecotype)) +
-  # DATA 
-  geom_boxplot() +
-  # AESTHETICS 
-  theme_bw()+
-  labs(x= "Ecotype", y= expression(paste("Symbiont cells per ", cm^{-2})))+
-  scale_color_manual(
-    values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
-    labels = c("Aposymbiotic", "Symbiotic")) + 
-  theme(text = element_text(size=25),
-        legend.position = "none")
-a_priori_plot        
-
-# t-test 
-a_priori_plot2 = a_priori_plot + stat_compare_means(method = "t.test", size = 5)
-a_priori_plot2
-
-ggsave("TLAP_Quad_S1_apriori.pdf", plot = a_priori_plot2, path = 'Figures', height = 8, width = 5)
 
