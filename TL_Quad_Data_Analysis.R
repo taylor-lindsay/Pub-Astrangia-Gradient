@@ -55,50 +55,7 @@ data1 <- data1 %>%
   mutate(percent_apo = mean_apo*0.00517*100) %>%
   mutate(percent_AP = percent_apo + percent_sym)
 
-# Fig 1. A-priori sym density  --------------------------------------------
-
-#AP_Apriori
-ap_raw <- read.csv('AP_Sym_Apriori.csv')
-
-# boxplot
-a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells.cm2, color=ecotype, fill=ecotype)) +
-  # DATA 
-  geom_boxplot(alpha=0.6) +
-  geom_point(size=2) + 
-  # AESTHETICS 
-  theme_bw()+
-  labs(x= "Ecotype", y= expression(paste("Symbiont cells per ", cm^{-2})))+
-  scale_color_manual(
-    values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
-    labels = c("Aposymbiotic", "Symbiotic")) + 
-  scale_fill_manual(values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
-                    labels = c("Aposymbiotic", "Symbiotic")) + 
-  theme(text = element_text(size=25),
-        legend.position = "none", 
-        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm")) 
- #stat_compare_means(method = "t.test", size = 5)
-a_priori_plot        
-
-# pivot longer 
-ap_raw_wider <- ap_raw %>% pivot_wider(names_from = field_color, values_from = Cells.cm2)
-
-# t-test
-t_test <- t.test(ap_raw_wider$WH, ap_raw_wider$BR, paired = FALSE)
-
-# extract stats 
-a_priori_stats <- data.frame(t = t_test$statistic,
-                             df = t_test$parameter, 
-                             p = t_test$p.value)
-
-# means 
-a_priori_means <- ap_raw %>%
-  group_by(field_color) %>%
-  summarise(mean = signif(mean(Cells.cm2),3), SD = signif(sd(Cells.cm2),3))
-
-# save graph 
-ggsave("TLAP_Quad_fig1_apriori.pdf", plot = a_priori_plot, path = 'Figures', height = 10, width = 7)
-
-# Fig 2. Site Map  --------------------------------------------------------------------
+# Fig 1. Site Map  --------------------------------------------------------------------
 
 #Input google key
 api_key <- ggmap::register_google(key="AIzaSyCCnby--k4d03DNhfdcpUvo8Hy4oNAvclw")
@@ -151,6 +108,50 @@ print(inset_plot + theme_void(), vp = viewport(x = 0.8, y = 0.3, width = 0.35, h
 
 # Close the graphics device
 dev.off()
+
+# Fig 2. A-priori sym density  --------------------------------------------
+
+#AP_Apriori
+ap_raw <- read.csv('AP_Sym_Apriori.csv')
+
+# boxplot
+a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells.cm2, color=ecotype, fill=ecotype)) +
+  # DATA 
+  geom_boxplot(alpha=0.6) +
+  geom_point(size=2) + 
+  # AESTHETICS 
+  theme_bw()+
+  labs(x= "Ecotype", y= expression(paste("Symbiont cells per ", cm^{-2})))+
+  scale_color_manual(
+    values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
+    labels = c("Aposymbiotic", "Symbiotic")) + 
+  scale_fill_manual(values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
+                    labels = c("Aposymbiotic", "Symbiotic")) + 
+  theme(text = element_text(size=25),
+        legend.position = "none", 
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm")) 
+#stat_compare_means(method = "t.test", size = 5)
+a_priori_plot        
+
+# pivot longer 
+ap_raw_wider <- ap_raw %>% pivot_wider(names_from = field_color, values_from = Cells.cm2)
+
+# t-test
+t_test <- t.test(ap_raw_wider$WH, ap_raw_wider$BR, paired = FALSE)
+
+# extract stats 
+a_priori_stats <- data.frame(t = t_test$statistic,
+                             df = t_test$parameter, 
+                             p = t_test$p.value)
+
+# means 
+a_priori_means <- ap_raw %>%
+  group_by(field_color) %>%
+  summarise(mean = signif(mean(Cells.cm2),3), SD = signif(sd(Cells.cm2),3))
+
+# save graph 
+ggsave("TLAP_Quad_fig1_apriori.pdf", plot = a_priori_plot, path = 'Figures', height = 10, width = 7)
+
 
 # Model Light  ------------------------------------------------------------
 
@@ -327,8 +328,8 @@ ggsave("TLAP_Quad_fig3_light_abundance.pdf", plot = fig3_arrange, path = 'Figure
 # calculate percent cover in each of the three zones 
 percent_cover_zones <- data1 %>%
    mutate(zone = case_when(
-    corrected_depth_m >= 0 & corrected_depth_m <= 10.5 ~ "macro",
-    corrected_depth_m > 10.5 & corrected_depth_m <= 13 ~ "coral",
+    corrected_depth_m >= 0 & corrected_depth_m <= 10.55 ~ "macro",
+    corrected_depth_m > 10.55 & corrected_depth_m <= 13 ~ "coral",
     corrected_depth_m > 13 & corrected_depth_m <= 24 ~ "deep",
     TRUE ~ NA_character_  # Optional: handle values outside these ranges
   )) %>%
@@ -337,8 +338,8 @@ percent_cover_zones <- data1 %>%
             sd_apo = sd(percent_apo),
             mean_sym = mean(percent_sym),
             sd_sym = sd(percent_sym),
-            mean_alg = mean(percent_alg),
-            sd_alg = sd(percent_alg))
+            mean_alg = mean(algae),
+            sd_alg = sd(algae))
             
   
 
