@@ -94,7 +94,7 @@ inset_plot <- ggmap(inset_map)+
 map_grob <- ggplotGrob(map)
 
 # Save combined plot to a file using a PDF device
-pdf(file = "Figures/TLAP_Quad_fig2_map.pdf", width = 6, height = 6) # Adjust dimensions as needed
+pdf(file = "Figures/TLAP_Quad_fig1_map.pdf", width = 6, height = 6) # Adjust dimensions as needed
 
 # Combine the plots
 grid.newpage()
@@ -150,8 +150,7 @@ a_priori_means <- ap_raw %>%
   summarise(mean = signif(mean(Cells.cm2),3), SD = signif(sd(Cells.cm2),3))
 
 # save graph 
-ggsave("TLAP_Quad_fig1_apriori.pdf", plot = a_priori_plot, path = 'Figures', height = 10, width = 7)
-
+ggsave("TLAP_Quad_fig2_apriori.pdf", plot = a_priori_plot, path = 'Figures', height = 10, width = 7)
 
 # Model Light  ------------------------------------------------------------
 
