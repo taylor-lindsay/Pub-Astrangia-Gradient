@@ -1,10 +1,12 @@
 # Pub-Astrangia-Gradient
 
-**Macroalgae and light availability modulate populations of the temperate coral Astrangia poculata**
+**Macroalgae and Light Availability Modulate the Distribution of the Temperate Coral Astrangia poculata**
 
 Taylor Lindsay*, Willow Dunster, Carlos Prada 
 
 *Corresponding author: taylor_lindsay@uri.edu
+
+https://doi.org/10.1111/maec.70001 
 
 ### Files 
 
