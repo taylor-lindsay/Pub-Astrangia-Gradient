@@ -113,8 +113,28 @@ dev.off()
 
 #AP_Apriori
 ap_raw <- read.csv('AP_Sym_Apriori.csv')
-
+# defense version: 
+ap_raw <- ap_raw %>% mutate(Cells_small = Cells.cm2/100000)
+ap_raw$ecotype <- factor(ap_raw$ecotype, levels = c("Sym", "Apo"))
+a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells_small, color=ecotype, fill=ecotype)) +
+  # DATA 
+  geom_boxplot(alpha=0.6) +
+  geom_point(size=2) + 
+  # AESTHETICS 
+  theme_bw()+
+  labs(x= "Ecotype", y= expression(paste(10^{5}, " Symbiont cells per ", cm^{-2})))+
+  scale_color_manual(
+    values = c("Apo" = "#ceb89a", "Sym" =  "#724a29"),
+    labels = c("Aposymbiotic", "Symbiotic")) + 
+  scale_fill_manual(values = c("Apo" = "#ceb89a", "Sym" =  "#724a29"), #"#e4d2ba", "#724a29"
+                    labels = c("Aposymbiotic", "Symbiotic")) + 
+  theme(text = element_text(size=25),
+        legend.position = "none", 
+        plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm")) 
+ggsave("TLAP_Quad_fig2_apriori_defense.pdf", plot = a_priori_plot, path = 'Figures', height = 10, width = 7)
+  
 # boxplot
+ap_raw <- read.csv('AP_Sym_Apriori.csv')
 a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells.cm2, color=ecotype, fill=ecotype)) +
   # DATA 
   geom_boxplot(alpha=0.6) +
@@ -125,7 +145,7 @@ a_priori_plot <- ggplot(ap_raw, aes(x=ecotype, y=Cells.cm2, color=ecotype, fill=
   scale_color_manual(
     values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
     labels = c("Aposymbiotic", "Symbiotic")) + 
-  scale_fill_manual(values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"),
+  scale_fill_manual(values = c("Apo" = "#bf9e72", "Sym" = "#7F1734"), #"#e4d2ba", "#724a29"
                     labels = c("Aposymbiotic", "Symbiotic")) + 
   theme(text = element_text(size=25),
         legend.position = "none", 
@@ -354,7 +374,7 @@ percent_cover <- ggplot(percent_cover_summary, aes(x=av, y=breaks, fill=cover_ty
   scale_y_reverse(expand = c(0, 0), limits = c(23,-1)) + 
   scale_x_continuous(position = "top") + 
   scale_fill_manual(
-    values = c("percent_apo" = "#bf9e72", "percent_sym" = "#7F1734", algae="#1B6B22"),
+    values = c("percent_apo" = "#bf9e72", "percent_sym" = "#7F1734", algae="#1B6B22"), #"#e4d2ba", "#724a29"
     labels = c("Macroalgae","Aposymbiotic", "Symbiotic"), 
     name = "Ecotype") + 
   labs(y = "Depth (m below MLLW)", x="Benthic cover (%)") + 
